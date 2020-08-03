@@ -1,0 +1,210 @@
+---
+title: "Peer Assessment"
+author: "Ricardo Alcaraz Fraga"
+date: "1/8/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This document is made as requested by Roger D. Peng as part of the Coursera
+course **Reproducible Research**. I'm going to explain the procedure I followed
+in order to answer to the assessment's questions.  
+  
+## Reading the data
+As a way of organizing the project files, I designed a folder named **Data** in
+which I always store the data that is going to be used in the project.
+
+``` {r reading data}
+data <- read.csv('/home/ricardo/Escritorio/PeerAssessment/Data/activity.csv')
+head(data)
+```
+
+## What is mean total number of steps taken per day?
+The first question we are going to answer in this question is: *how many steps
+were taken by day?* This can be seen in the next histogram.
+
+``` {r total steps,echo = FALSE, fig.heigth = 2, fig.width = 10}
+library(ggplot2)
+dates <- unique(data[, 'date'])
+
+# Computing mean by day
+sums <- c()
+for(date_i in dates) {
+      value_day <- subset(data, as.character(date) == 
+                                as.character(date_i))$steps
+      
+      sums <- c(sums, sum(value_day, na.rm = TRUE))
+}
+
+frame <- data.frame(date = as.Date(dates, '%Y-%m-%d'), steps = sums)
+
+print(ggplot(frame, aes(x = date, y = steps)) + 
+            geom_bar(stat = 'identity', color = '#363A19', fill = '#363A19', 
+                     alpha = 0.8))
+```
+
+There were days in which no data was registered for the number of steps, these 
+were treated as if no steps were taken that day.  
+The second question answered in this section is *what is the mean and median of
+the numbers of steps taken each day?*
+
+``` {r mean and median by day, echo = FALSE}
+# Computing mean by day
+means <- c()
+medians <- c()
+
+for(date_i in dates) {
+      value_day <- subset(data, as.character(date) == 
+                                as.character(date_i))$steps
+      
+      mean_day <- mean(value_day, na.rm = TRUE)
+      
+      if(is.na(mean_day))
+        mean_day = 0
+      
+      median_day <- median(value_day, na.rm = TRUE)
+      
+      means <- c(means, mean_day)
+      medians <- c(medians, median_day)
+}
+
+frame <- data.frame(date = as.Date(dates, '%Y-%m-%d'),
+                    mean = means, median = medians)
+print(frame)
+```
+
+As you can see, the median value is not that helpful because of all the NAs and 
+0s on the data, still, the mean is indeed helpful and this numbers compliment 
+really good the histogram previously shown.  
+
+## What is the average daily activity pattern?
+In order to observe this question I'm presenting a time series plot of the 5 
+minute interval and the average numbers of steps taken averaged across all days.  
+
+``` {r mean steps by day, echo = FALSE, fig.heigth = 2, fig.width = 10}
+print(ggplot(frame, aes(x = date, y = mean)) +
+        geom_line(color = 'purple'))
+```
+
+Continuing with this section I'll show what's the interval with the greatest 
+mean of steps.
+
+``` {r greatest mean, echo = FALSE}
+intervals <- unique(data$interval)
+
+values_intervals <- c()
+for(interval_i in intervals) {
+   steps_i <- subset(data, interval == interval_i)$steps
+   mean_steps_i <- mean(steps_i, na.rm = TRUE)
+   
+   values_intervals <- c(values_intervals, mean_steps_i)
+}
+
+frame <- data.frame(interval = intervals, mean = values_intervals)
+print(frame[which.max(frame$mean), ])
+```
+
+## Imputing missing values
+As we've seen, there are a lot of NAs values that may bias our measurements 
+means and medians. Let's look at how many NA values are there in the data set. 
+``` {r NAs}
+len <- length(data$steps)
+print(paste0('Total of observations in the data set: ', len))
+
+nas <- sum(is.na(data$steps))
+print(paste0('Total of NA values in the data set: ', nas))
+
+perc <- nas * 100 / len
+print(paste0(paste0('Percentage of NA values: ', perc), '%'))
+```
+
+To fill in the NA values, we were told to create a strategy for imputing this 
+values. We are going to implement a strategy in which we fill the gaps with the 
+mean for that 5-minute interval.
+
+``` {r imputing}
+nas_ind <- which(is.na(data$steps))
+
+for(index in nas_ind){
+  row_index_frame <- which(frame$interval == data[index, 'interval'])
+   data$steps[index] <- frame[row_index_frame, 'mean']
+}
+
+print(head(data))
+```
+
+As we can see from the head from the data, there are now no NA values! Now let's
+re-compute the histogram of the total of steps taken each day, as well as the 
+mean and median and we'll see how different it looks.  
+
+``` {r imputed histogram, echo = FALSE}
+# Computing mean by day
+sums <- c()
+for(date_i in dates) {
+      value_day <- subset(data, as.character(date) == 
+                                as.character(date_i))$steps
+      
+      sums <- c(sums, sum(value_day, na.rm = TRUE))
+}
+
+frame <- data.frame(date = as.Date(dates, '%Y-%m-%d'), steps = sums)
+
+print(ggplot(frame, aes(x = date, y = steps)) + 
+            geom_bar(stat = 'identity', color = '#363A19', fill = '#363A19', 
+                     alpha = 0.8))
+
+# Computing mean by day
+means <- c()
+medians <- c()
+
+for(date_i in dates) {
+      value_day <- subset(data, as.character(date) == 
+                                as.character(date_i))$steps
+      
+      mean_day <- mean(value_day, na.rm = TRUE)
+      
+      if(is.na(mean_day))
+        mean_day = 0
+      
+      median_day <- median(value_day, na.rm = TRUE)
+      
+      means <- c(means, mean_day)
+      medians <- c(medians, median_day)
+}
+
+frame <- data.frame(date = as.Date(dates, '%Y-%m-%d'),
+                    mean = means, median = medians)
+print(frame)
+```
+
+What a change! Everything looks a lot useful now (of course, if we assume our 
+imputing strategy is good enough to generate better insight from the data).  
+
+## Are there differences in activity patterns between weekdays and weekends?
+
+``` {r week days, echo = FALSE, fig.heigth = 2, fig.width = 10}
+days <- c()
+for(i in 1:length(frame$mean)) {
+  
+  if(weekdays(frame[i, 'date']) %in% c('lunes', 'martes', 'miércoles', 
+                                       'jueves', 'viernes')) {
+    days <- c(days, 'weekday')
+  }
+  
+  else
+    days <- c(days, 'weekend')
+}
+
+frame <- data.frame(date = frame$date,
+                    mean = frame$mean, 
+                    median = frame$median,
+                    day = days)
+
+print(ggplot(frame, aes(x = date, y = mean, group = day, color = day)) + 
+        geom_line() + 
+        facet_wrap(~day))
+
+```
