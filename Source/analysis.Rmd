@@ -2,7 +2,7 @@
 title: "Peer Assessment"
 author: "Ricardo Alcaraz Fraga"
 date: "1/8/2020"
-output: html_document
+output: md_document
 ---
 
 ```{r setup, include=FALSE}
